@@ -1,3 +1,5 @@
+*.png
+
 android/
 package-lock.json
 node_modules/

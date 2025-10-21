@@ -17,7 +17,7 @@ const config = {
 
 		// ✅ Important: fix base path for GitHub Pages subdirectory
 		paths: {
-			base: process.env.NODE_ENV === 'production' ? '/demo' : ''
+			base: process.env.NODE_ENV === 'production' ? '/mcp-context-engineering' : ''
 		},
 
 		// optional, but ensures SvelteKit app files stay in a predictable dir

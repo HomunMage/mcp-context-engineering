@@ -1,119 +1,117 @@
 <!-- src/routes/+page.svelte -->
 <script lang="ts">
-	import { apiKey } from '$lib/stores/status.cache';
-	import { ChatLLM } from '$lib/backend/llm_prompt';
-	import { moodPromptTemplate } from '$lib/data/llm_template/mood';
-	import { parseLLMJson } from '$lib/utils/llm/parser';
-	import Button from '$lib/UI/Button.svelte';
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
+  import { apiKey } from '$lib/stores/status.cache';
+  import { LLMtoMCP } from '$lib/backend/llm_prompt';
+  import { mcpPromptTemplate } from '$lib/data/llm_template/mcp';
+  import Button from '$lib/UI/Button.svelte';
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
 
-	let userInput = '';
-	let response = '';
-	let loading = false;
-	let error = '';
-	let mood: string | null = null;
+  let userInput = '';
+  let templateInput = `{
+  "jsonrpc": "2.0",
+  "id": "call-1234",
+  "method": "tools/call",
+  "params": {
+    "name": "your_tool_name",
+    "arguments": {
+      "paramA": "valueA",
+      "paramB": 42,
+      "paramC": true
+    }
+  }
+}`;
+  let response = '';
+  let loading = false;
+  let error = '';
 
-	async function sendMessage() {
-		if (!userInput.trim()) return;
-		if (!$apiKey) {
-			error = 'Please set your API key first';
-			return;
-		}
+  async function sendMessage() {
+    if (!userInput.trim()) {
+      error = 'Please enter a message.';
+      return;
+    }
+    if (!$apiKey) {
+      error = 'Please set your API key first.';
+      return;
+    }
 
-		loading = true;
-		error = '';
-		response = '';
-		mood = null;
+    loading = true;
+    error = '';
+    response = '';
 
-		try {
-			response = await ChatLLM($apiKey, moodPromptTemplate, userInput);
-			const parsed = parseLLMJson(response);
-			mood = parsed.mood?.toLowerCase?.() ?? null;
-		} catch (e) {
-			error = e instanceof Error ? e.message : 'An error occurred';
-		} finally {
-			loading = false;
-		}
-	}
+    try {
+      // Call new LLMtoMCP function
+      response = await LLMtoMCP($apiKey, mcpPromptTemplate, userInput, templateInput);
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'An unexpected error occurred.';
+    } finally {
+      loading = false;
+    }
+  }
 
-	function goToKeyPage() {
-		goto(resolve('/key'));
-	}
-
-	function getMoodEmoji(m: string) {
-		switch (m) {
-			case 'happy':
-				return '😄';
-			case 'sad':
-				return '😢';
-			case 'angry':
-				return '😠';
-			case 'soso':
-				return '😐';
-			default:
-				return '❓';
-		}
-	}
+  function goToKeyPage() {
+    goto(resolve('/key'));
+  }
 </script>
 
-<div class="container mx-auto max-w-3xl p-8">
-	<h1 class="mb-8 text-3xl font-bold text-gray-900">🧠 Mood Analyzer</h1>
+<div class="relative">
+  <div class="absolute right-4 top-4">
+    <Button variant="secondary" onclick={goToKeyPage}>Set Key</Button>
+  </div>
 
-	<div class="space-y-6">
-		<!-- Input Section -->
-		<div class="flex flex-col gap-3">
-			<textarea
-				name="message"
-				rows="6"
-				placeholder="Write your diary for today..."
-				bind:value={userInput}
-				class="w-full resize-y rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-			></textarea>
+  <div class="container mx-auto max-w-3xl p-8">
+    <h1 class="mb-8 text-3xl font-bold text-gray-900">🧩 LLM to MCP Chat</h1>
 
-			<Button variant="primary" onclick={sendMessage} disabled={loading}>
-				{loading ? 'Analyzing...' : 'Analyze Mood'}
-			</Button>
-		</div>
+    <div class="space-y-8">
+      <!-- Template Section -->
+      <div class="flex flex-col gap-3">
+        <label class="font-semibold text-gray-800">Structured Template (JSON or schema)</label>
+        <textarea
+          name="template"
+          rows="10"
+          placeholder="Enter your JSON or schema here..."
+          bind:value={templateInput}
+          class="w-full resize-y rounded-md border border-gray-300 bg-white px-3 py-2 font-mono text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+        ></textarea>
+      </div>
 
-		<!-- Error Message -->
-		{#if error}
-			<div class="space-y-3 rounded-lg border border-red-200 bg-red-50 p-4">
-				<p class="font-medium text-red-800">Error: {error}</p>
+      <!-- Input Section -->
+      <div class="flex flex-col gap-3">
+        <label class="font-semibold text-gray-800">Your Message</label>
+        <textarea
+          name="message"
+          rows="6"
+          placeholder="Type your instruction or question..."
+          bind:value={userInput}
+          class="w-full resize-y rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+        ></textarea>
 
-				{#if error === 'Please set your API key first'}
-					<Button variant="secondary" onclick={goToKeyPage}>Set Key</Button>
-				{/if}
-			</div>
-		{/if}
+        <Button variant="primary" onclick={sendMessage} disabled={loading}>
+          {loading ? 'Processing...' : 'Send'}
+        </Button>
+      </div>
 
-		<!-- Response Section -->
-		<!--
-		{#if response}
-			<div class="rounded-lg border border-blue-200 bg-blue-50 p-6">
-				<h2 class="mb-3 text-sm font-semibold tracking-wide text-blue-800 uppercase">
-					Raw Gemini Reply
-				</h2>
-				<p class="whitespace-pre-wrap text-gray-900">{response}</p>
-			</div>
-		{/if}
-		-->
+      <!-- Error Message -->
+      {#if error}
+        <div class="space-y-3 rounded-lg border border-red-200 bg-red-50 p-4">
+          <p class="font-medium text-red-800">Error: {error}</p>
+        </div>
+      {/if}
 
-		<!-- Mood Display -->
-		{#if mood}
-			<div class="flex items-center gap-4 rounded-lg border border-green-200 bg-green-50 p-6">
-				<span class="text-5xl">{getMoodEmoji(mood)}</span>
-				<div>
-					<h2 class="text-lg font-semibold text-gray-900 capitalize">Mood: {mood}</h2>
-				</div>
-			</div>
-		{/if}
+      <!-- Response Display -->
+      {#if response}
+        <div class="rounded-lg border border-blue-200 bg-blue-50 p-6 whitespace-pre-wrap">
+          <h2 class="text-lg font-semibold text-gray-900 mb-2">Response:</h2>
+          <p class="text-gray-800">{response}</p>
+        </div>
+      {/if}
 
-		<!-- Loading State -->
-		{#if loading}
-			<div class="rounded-lg border border-gray-200 bg-gray-50 p-6">
-				<p class="animate-pulse text-gray-600">Analyzing your mood...</p>
-			</div>
-		{/if}
-	</div>
+      <!-- Loading State -->
+      {#if loading}
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-6">
+          <p class="animate-pulse text-gray-600">Processing your message...</p>
+        </div>
+      {/if}
+    </div>
+  </div>
 </div>

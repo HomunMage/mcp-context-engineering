@@ -24,3 +24,30 @@ export async function ChatLLM(
 
 	return response;
 }
+
+/**
+ * LLMtoMCP
+ * Advanced function that replaces both {{user_chat}} and {{user_template}} placeholders
+ * and sends the combined structured prompt to Gemini.
+ *
+ * @param apiKey - Google API key for Gemini
+ * @param prompt_template - Template containing placeholders
+ * @param user_chat - User’s natural language input
+ * @param user_template - User’s structured JSON or schema
+ */
+export async function LLMtoMCP(
+  apiKey: string,
+  prompt_template: string,
+  user_chat: string,
+  user_template: string
+): Promise<string> {
+  let filledPrompt = prompt_template;
+
+  // Replace both placeholders safely
+  filledPrompt = filledPrompt
+    .replace(/{{\s*user_chat\s*}}/g, user_chat)
+    .replace(/{{\s*user_template\s*}}/g, user_template);
+
+  const response = await ChatWithGemini(apiKey, filledPrompt);
+  return response;
+}
